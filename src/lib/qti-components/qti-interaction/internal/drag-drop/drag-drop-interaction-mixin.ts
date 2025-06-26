@@ -765,6 +765,52 @@ export const DragDropInteractionMixin = <T extends Constructor<Interaction>>(
       document.body.appendChild(this.dragClone);
     }
 
+    private createClone(rect: DOMRect, source: HTMLElement) {
+      this.cloneOffset.x = this.touchStartPoint.x - rect.left;
+      this.cloneOffset.y = this.touchStartPoint.y - rect.top;
+
+      this.dragClone = source.cloneNode(true) as HTMLElement;
+
+      // Copy computed styles to the clone
+      const computedStyles = window.getComputedStyle(source);
+      for (let i = 0; i < computedStyles.length; i++) {
+        const key = computedStyles[i];
+        this.dragClone.style.setProperty(key, computedStyles.getPropertyValue(key));
+      }
+      const rectOrg = source.getBoundingClientRect();
+      this.dragClone.style.width = `${rectOrg.width}px`;
+      this.dragClone.style.height = `${rectOrg.height}px`;
+      if (rect) {
+        this.setDragCloneStyles(rect);
+      }
+      this.dragClone.style.display = 'block';
+      this.dragClone.style.opacity = '1';
+
+      this.addBeforeContentToClone(source);
+    }
+
+    private addBeforeContentToClone(source: HTMLElement) {
+      const beforeStyle = window.getComputedStyle(source, '::before');
+      const beforeContent = beforeStyle.getPropertyValue('content');
+
+      if (beforeContent && beforeContent !== 'none' && beforeContent !== 'normal' && beforeContent !== '""') {
+        const beforeElem = document.createElement('span');
+        beforeElem.className = 'drag-clone-before';
+        beforeElem.textContent = beforeContent.replace(/^['"]|['"]$/g, ''); // Quotes strippen
+
+        for (let i = 0; i < beforeStyle.length; i++) {
+          const key = beforeStyle[i];
+          if (key === 'content') continue; // Skip the content property
+          beforeElem.style.setProperty(key, beforeStyle.getPropertyValue(key));
+        }
+        beforeElem.style.display = 'inline';
+
+        // Zet het element helemaal vooraan in de clone
+        this.dragClone.insertBefore(beforeElem, this.dragClone.firstChild);
+      }
+
+    }
+
     private handleTouchStart(e) {
       if (this.isMatchTabular()) return;
       if (e instanceof MouseEvent) {
@@ -801,24 +847,7 @@ export const DragDropInteractionMixin = <T extends Constructor<Interaction>>(
         this.dragSource = draggableInDragContainer;
       }
 
-      this.cloneOffset.x = x - rect.left;
-      this.cloneOffset.y = y - rect.top;
-      this.dragClone = draggableInDragContainer.cloneNode(true) as HTMLElement;
-
-      // Copy computed styles to the clone
-      const computedStyles = window.getComputedStyle(draggableInDragContainer);
-      for (let i = 0; i < computedStyles.length; i++) {
-        const key = computedStyles[i];
-        this.dragClone.style.setProperty(key, computedStyles.getPropertyValue(key));
-      }
-      const rectOrg = draggableInDragContainer.getBoundingClientRect();
-      this.dragClone.style.width = `${rectOrg.width}px`;
-      this.dragClone.style.height = `${rectOrg.height}px`;
-      if (rect) {
-        this.setDragCloneStyles(rect);
-      }
-      this.dragClone.style.display = 'block';
-      this.dragClone.style.opacity = '1';
+      this.createClone(rect, draggableInDragContainer);
       this.appendClone();
 
       // check if max associations are reached
