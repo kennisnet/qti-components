@@ -105,7 +105,7 @@ export class QtiExtendedTextInteraction extends Interaction {
 
   override render() {
     return html`<slot name="prompt"></slot
-      ><slot name="status-icon"></slot><textarea
+      ><slot name="status-icon"></slot><span class="status-icon" part="status-icon" aria-hidden="true"></span><textarea
         part="textarea"
         name="${this.responseIdentifier}"
         spellcheck="false"
